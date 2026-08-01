@@ -6,7 +6,7 @@ An automated end-to-end workflow built with **n8n** that monitors RSS tech news 
 
 ## 📸 Workflow Preview
 
-![n8n Workflow Canvas](assets/workflow-screenshot.png)
+(https://github.com/climate-maker/n8n-LinkedIn-AI-Content-Generator-Auto-Publisher/blob/main/Screenshot%202026-08-01%20115522.png))
 
 ---
 
