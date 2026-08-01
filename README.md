@@ -30,7 +30,7 @@ An automated end-to-end workflow built with **n8n** that monitors RSS tech news 
 
 ---
 
-## 📁 Project Structure
+## 📁 Project Documentation Structure
 
 ```text
 .
