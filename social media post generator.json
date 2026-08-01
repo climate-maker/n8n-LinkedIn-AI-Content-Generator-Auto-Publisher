@@ -1,0 +1,478 @@
+{
+  "name": "social media post generator",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 12
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -928,
+        -128
+      ],
+      "id": "9a438785-a5da-48ec-ab13-e76b9ad2a351",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an elite Enterprise AI Thought Leader and Tech Analyst writing viral LinkedIn posts for a global audience.\n\nYOUR TASK:\nTransform the provided Enterprise AI news article into a crisp, high-impact LinkedIn post following the exact tone, structure, and punchy analytical style of top industry newsletters.\n\nPRIMARY READER: A CTO or VP of Engineering deciding whether this is worth their team's attention. Secondary readers (job seekers, founders, students) should still find it clear, but do not soften the technical framing for them.\n\nFIRST-PASS ACCURACY (a second pass will fact-check this, but get it right the first time):\nOnly use facts, numbers, and claims present in the input text below. Attribute every statistic to the exact scope the source gives it — never reframe a company-wide figure (like total capex) as spending on one specific feature. Never assert what users \"prefer,\" \"want,\" or \"believe\" — usage numbers describe behavior, not motivation, unless the source explicitly states a preference.\n\nVOICE — THIS IS THE MAIN THING TO GET RIGHT:\nEmulate this rhetorical structure, closely:\n1. Open by stating one true, specific fact from the article, then immediately reframe its significance by contrasting it against something bigger, more surprising, or ironic — in the same sentence or the next. Never open with an abstract claim about \"AI\" or \"the industry.\"\n2. Attribute every number inline and precisely — not \"nearly 2 billion,\" the exact figure, with its source named in the same sentence (e.g. \"per [person/source]\").\n3. Somewhere in the piece, use a contrast-then-resolve structure: state a weaker or commonly assumed claim, then the stronger actual claim, then one sentence naming why the gap matters. This is the \"line of the week\" — it should feel like a sharp aphorism, not a summary.\n4. Write in concrete nouns and plain verbs throughout. Avoid consultant-speak entirely — no \"orchestration layer,\" \"unified outcome,\" \"next frontier,\" \"signals a shift,\" or any sentence that could be dropped unchanged into an article about a different topic. If you can swap the subject and the sentence still works, rewrite it.\n5. End with one operational, concrete takeaway — something a reader could actually go do or check — not an abstract leadership platitude.\n\nRHYTHM: Vary sentence length deliberately. Follow a longer, information-dense sentence with a short, blunt one.\n\nSTRUCTURE:\n1. Hook (max 220 characters): the fact + reframe, per the voice rules above.\n2. Condensed context: exactly 2 short paragraphs, max 3 sentences each, naming the specific technique/system/figure from the source.\n3. The strategic why: one paragraph, max 3 sentences, tied to the actual mechanism in the article — not generic executive advice.\n4. Line of the week: the contrast-then-resolve sentence described above.\n5. The bottom line: one concrete, operational takeaway.\n\nLENGTH TARGET: Aim for 900-1,300 characters total including spaces. A downstream check will hard-cap this if you run long, but try to land in range on your own.\n\nFORMATTING RULES:\n- No markdown syntax anywhere (no **, no #, no bullet dashes, no italics markers).\n- No emoji.\n- Plain double line breaks (\\n\\n) between sections. Do not include literal labels like \"The Breakdown:\" in the output — it should read as natural paragraph flow.\n\nOUTPUT FORMAT:\nRespond with ONLY valid JSON. No markdown code fences, no preamble, no explanation before or after the JSON.\n\n{\n  \"linkedin_post\": \"the full formatted post as one string, using \\n\\n for paragraph breaks, following all rules above\"\n}\n\nINPUT DATA:\nArticle Title: {{ $('RSS Read').item.json.title }}\nArticle Source/URL: {{ $('RSS Read').item.json.link }}\nFull Page Text: {{ $('HTTP Request').item.json.data }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        864,
+        -32
+      ],
+      "id": "550bd862-aa92-492d-8568-4af7b853c619",
+      "name": "Basic LLM Chain",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.feedUrl }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -256,
+        -32
+      ],
+      "id": "99570024-2df9-4403-8405-18f83331833d",
+      "name": "RSS Read"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9a15a04d-1431-4e19-9918-115ebc6bae6b",
+              "leftValue": "={{ /automation|agent|enterprise ai/i.test($json.title + \" \" + ($json.contentSnippet || $json.content || \"\")) }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "dca63ced-b1ab-4faf-8f97-58898fbf7ffe",
+              "leftValue": "={{ new Date($json.pubDate || $json.isoDate) > new Date(Date.now() - 24 * 60 * 60 * 1000) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        -32,
+        -32
+      ],
+      "id": "f61801c3-ba25-4038-8b2b-072830069102",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  { json: { feedUrl: \"https://venturebeat.com/category/ai/feed/\" } },\n  { json: { feedUrl: \"https://techcrunch.com/category/artificial-intelligence/feed/\" } },\n  { json: { feedUrl: \"https://www.technologyreview.com/topic/artificial-intelligence/feed\" } },\n  { json: { feedUrl: \"https://arstechnica.com/ai/feed/\" } },\n  { json: { feedUrl: \"https://www.wired.com/feed/tag/ai/latest/rss\" } },\n  { json: { feedUrl: \"https://www.infoworld.com/feed/\" } },\n  { json: { feedUrl: \"https://siliconangle.com/feed/\" } },\n  { json: { feedUrl: \"https://www.geekwire.com/tag/ai/feed/\" } },\n  { json: { feedUrl: \"https://news.crunchbase.com/sections/ai/feed/\" } },\n  { json: { feedUrl: \"https://www.uipath.com/blog/rss.xml\" } },\n  { json: { feedUrl: \"https://blog.n8n.io/rss\" } },\n  { json: { feedUrl: \"https://zapier.com/blog/feeds/latest/\" } },\n  { json: { feedUrl: \"https://blog.kore.ai/rss.xml\" } },\n  { json: { feedUrl: \"https://nanonets.com/blog/rss/\" } },\n  { json: { feedUrl: \"https://www.datarobot.com/blog/feed/\" } },\n  { json: { feedUrl: \"https://aws.amazon.com/blogs/machine-learning/category/artificial-intelligence/feed/\" } },\n  { json: { feedUrl: \"https://news.microsoft.com/source/topics/ai/feed/\" } },\n  { json: { feedUrl: \"https://blogs.sas.com/content/topic/artificial-intelligence/feed/\" } }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -704,
+        -128
+      ],
+      "id": "b50d6c72-96ee-4fcf-b3fa-bca7ddca2cff",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -480,
+        -32
+      ],
+      "id": "2eed5bf0-36f1-4798-b72c-74557978c804",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1wYY0ELZ-97wupqbohPgYaWPO2ZfJismADAkYroeApDw",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Posts",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wYY0ELZ-97wupqbohPgYaWPO2ZfJismADAkYroeApDw/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wYY0ELZ-97wupqbohPgYaWPO2ZfJismADAkYroeApDw/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Article Title": "={{ $node[\"RSS Read\"].json.title }}",
+            "LinkedIn Post": "={{ JSON.parse($node[\"Basic LLM Chain\"].json.text).linkedin_post }}",
+            "Source URL": "={{ $node[\"RSS Read\"].json.link }}",
+            "Published Date": "={{ $node[\"RSS Read\"].json.pubDate }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Article Title",
+              "displayName": "Article Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "LinkedIn Post",
+              "displayName": "LinkedIn Post",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Source URL",
+              "displayName": "Source URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Published Date",
+              "displayName": "Published Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1552,
+        64
+      ],
+      "id": "a8e51912-cda0-43fe-84cf-40fca24d8ad0",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "G1OsJSILoCc6j669",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "amount": 20
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        640,
+        -32
+      ],
+      "id": "e406526f-26b0-4d6e-9ba0-44449b58cead",
+      "name": "Wait",
+      "webhookId": "735dd85d-a17b-4bf1-9ee5-d8b2fb1eac53"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        416,
+        -32
+      ],
+      "id": "260510f3-a271-4af5-b644-17bf163ee0e2",
+      "name": "Limit"
+    },
+    {
+      "parameters": {
+        "url": "=https://r.jina.ai/{{ $('RSS Read').item.json.link }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        192,
+        -32
+      ],
+      "id": "5714b8b1-db13-4988-aa51-fba22a6604a4",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a strict fact-checker reviewing a LinkedIn post generated from a news article. Your only job is verification, not writing.\n\nSOURCE ARTICLE:\n{{ $('HTTP Request').item.json.data }}\n\nGENERATED POST TO CHECK:\n{{ JSON.parse($('Basic LLM Chain').item.json.text.replace(/```json|```/g, '').trim()).linkedin_post }}\n\nINSTRUCTIONS:\nCheck every specific number, statistic, dollar figure, percentage, and named claim in the Generated Post against the Source Article. For each one, verify:\n1. Does this number/claim actually appear in the Source Article?\n2. Is it being used with the SAME scope and context the source gives it — not narrowed, exaggerated, or reattributed to a different subject?\n3. Does the post assert any user motive, preference, or belief (\"users prefer,\" \"users want\") that the source does not explicitly state?\n\nIf a claim fails any of these checks, remove that specific sentence or claim from the post and smoothly rewrite the surrounding text so it still flows naturally — do not leave gaps or awkward transitions. Do not remove more than necessary; only fix the specific unsupported claim.\nCAUSAL LINKAGE CHECK: Even when a statistic is correctly scoped, check whether the sentence structure implies a causal or direct connection between two facts that the source does not actually connect. Example: if the source states Google's 2026 capex guidance separately from its search redesign strategy, a sentence like \"betting $190 billion... that the future of search is conversational\" wrongly implies the capex figure IS the bet on this specific feature, even though the number itself is accurate. If a sentence links two true, correctly-scoped facts with language that implies one caused, funded, or was motivated by the other, and the source does not state that connection explicitly, rewrite the sentence to present both facts independently rather than causally linked.\nPRESERVE SPECIFICITY WHEN CORRECTING: When removing an unsupported claim, do not replace it with generic or abstract language as a default. First check whether the source article contains a different specific fact, quote, or detail that could serve the same rhetorical role (e.g., a real statistic, a named person's statement, a concrete mechanism) — use that instead of inventing something. Only fall back to more general phrasing if no specific, source-backed alternative exists. A correction that trades a false specific claim for a vague true one is acceptable but not preferred; a correction that trades a false specific claim for a different true specific claim is the better outcome.\nAlso check: does the post contain any of these banned phrases or patterns? If so, rewrite that sentence.\n- \"the priority must shift from X to Y\"\n- \"the next era of value will be defined by\"\n- Sentences starting with \"For enterprise leaders, this signals...\" or \"For [job title], this means...\"\n- Vague abstractions like \"unified outcome,\" \"true intelligence,\" \"the next frontier\"\n- Unsupported superlatives (biggest, first-ever, unprecedented, historic)\n\nRespond with ONLY valid JSON, no markdown fences, no preamble:\n{\n  \"verified_clean\": true or false,\n  \"issues_found\": [\"short description of each issue found, or empty array if none\"],\n  \"corrected_post\": \"the full corrected post text, ready to publish, with all issues fixed\"\n}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1216,
+        -32
+      ],
+      "id": "92038ab5-5049-4fc7-b5db-2a53225bdb3f",
+      "name": "Fact check",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        800,
+        176
+      ],
+      "id": "df3ee459-8b50-4c64-9c3f-a18fa6aef46e",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "yydVeuzirMwMkxGD",
+          "name": "Google Gemini(PaLM) Api account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1152,
+        176
+      ],
+      "id": "66337d20-9249-4383-8e50-0c9820661840",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "yydVeuzirMwMkxGD",
+          "name": "Google Gemini(PaLM) Api account 3"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Fact check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fact check": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Fact check",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "1ea72991-0a10-4147-b33a-379a90d35bc2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5d245b673f33d9f2e85950e8d81a1a2d284653db9337b28cb79d793f05cd9ea3"
+  },
+  "nodeGroups": [],
+  "id": "WYRrJWuiVWFC0Jvh",
+  "tags": []
+}
